@@ -1,0 +1,15 @@
+services:
+  evcc-tariff:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - OCR_API_KEY=helloworld
+      # Optional fallback when CEZ API is unavailable:
+      # - LOW_TARIFF_WINDOWS=00:00-05:00;06:00-08:30;09:30-11:30;12:30-15:30;16:30-19:30;20:30-24:00
+    volumes:
+      - cache:/data
+    restart: unless-stopped
+
+volumes:
+  cache:
