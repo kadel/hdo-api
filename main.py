@@ -34,7 +34,7 @@ CAPTCHA_PROMPT = (
 )
 
 CACHE_DIR = Path(os.environ.get("CACHE_DIR", "/data"))
-REFRESH_INTERVAL = timedelta(days=3)
+REFRESH_INTERVAL = timedelta(days=1)
 
 # ean -> {"schedule": {date_str: [(sh,sm,eh,em), ...]}, "updated": datetime | None}
 ean_caches: dict[str, dict] = {}

@@ -105,7 +105,7 @@ The JSON endpoint expects a POST body of `{"ean": "<18 digits>", "captcha": "<4 
 ## How it works
 
 1. On startup, loads all cached HDO schedules from disk
-2. On request, if cache for the given EAN is missing or older than 3 days, fetches fresh data from CEZ distribuce API
+2. On request, if cache for the given EAN is missing or older than 1 day, fetches fresh data from CEZ distribuce API
 3. CAPTCHA on the CEZ API is solved by sending the image to Gemini `gemini-3.1-flash-lite` via the `google-genai` SDK (requires `GEMINI_API_KEY`)
-4. Each EAN's schedule is cached to its own file and refreshed every 3 days
+4. Each EAN's schedule is cached to its own file and refreshed every 1 day
 5. Each request maps the cached low-tariff windows to the `vt`/`nt` prices from the query parameters
