@@ -12,19 +12,21 @@ jobs:
   build:
     runs-on: docker
     container:
-      image: quay.io/podman/stable
-      options: --privileged
+      image: docker:cli
     steps:
+      - name: Install git
+        run: apk add --no-cache git
+
       - name: Checkout
         run: git clone --depth=1 --branch ${{ github.ref_name }} ${{ github.server_url }}/${{ github.repository }} .
 
       - name: Login to Forgejo Container Registry
-        run: echo "${{ secrets.FORGEJO_TOKEN }}" | podman login ${{ env.REGISTRY }} -u ${{ github.repository_owner }} --password-stdin
+        run: echo "${{ secrets.FORGEJO_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.repository_owner }} --password-stdin
 
       - name: Build image
-        run: podman build -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }} .
+        run: docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }} .
 
       - name: Push image
         run: |
-          podman push ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
-          podman push ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
