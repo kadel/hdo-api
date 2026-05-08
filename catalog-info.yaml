@@ -1,0 +1,98 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: hdo-api
+  title: HDO API
+  description: HTTP API serving CEZ HDO tariff schedules for evcc
+  annotations:
+    github.com/project-slug: kadel/hdo-api
+    backstage.io/source-location: url:https://github.com/kadel/hdo-api
+  links:
+    - url: https://github.com/kadel/hdo-api
+      title: GitHub Repository
+    - url: https://evcc.io
+      title: evcc
+  tags:
+    - python
+    - fastapi
+    - evcc
+    - hdo
+spec:
+  type: service
+  lifecycle: production
+  owner: user:default/kadel
+  system: homelab
+  providesApis:
+    - hdo-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: hdo-api
+  title: HDO API
+  description: evcc-compatible tariff price forecast API backed by CEZ HDO schedules
+  links:
+    - url: https://github.com/kadel/hdo-api#api-endpoints
+      title: API endpoints documentation
+  tags:
+    - evcc
+    - hdo
+spec:
+  type: openapi
+  lifecycle: production
+  owner: user:default/kadel
+  system: homelab
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: HDO API
+      version: 0.1.0
+      description: HTTP API serving CEZ HDO tariff schedules for evcc
+    paths:
+      /api/rates:
+        get:
+          summary: Hourly tariff price forecast (evcc forecast source)
+          parameters:
+            - name: ean
+              in: query
+              required: true
+              schema: { type: string }
+              description: 18-digit EAN number
+            - name: vt
+              in: query
+              required: true
+              schema: { type: number }
+              description: High-tariff price
+            - name: nt
+              in: query
+              required: true
+              schema: { type: number }
+              description: Low-tariff price
+          responses:
+            "200":
+              description: Hourly time slots for today and tomorrow
+      /api/price:
+        get:
+          summary: Current price (evcc price source)
+          parameters:
+            - name: ean
+              in: query
+              required: true
+              schema: { type: string }
+            - name: vt
+              in: query
+              required: true
+              schema: { type: number }
+            - name: nt
+              in: query
+              required: true
+              schema: { type: number }
+          responses:
+            "200":
+              description: Current tariff price as plain text
+      /api/status:
+        get:
+          summary: Cache status per EAN
+          responses:
+            "200":
+              description: Cache state for debugging
