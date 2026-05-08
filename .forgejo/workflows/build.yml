@@ -8,6 +8,9 @@ env:
   REGISTRY: forgejo.apps.home.tomaskral.eu
   IMAGE: ${{ github.repository }}
 
+permissions:
+  packages: write
+
 jobs:
   build:
     runs-on: docker
