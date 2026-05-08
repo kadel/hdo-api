@@ -8,9 +8,6 @@ env:
   REGISTRY: forgejo.apps.home.tomaskral.eu
   IMAGE: ${{ github.repository }}
 
-permissions:
-  packages: write
-
 jobs:
   build:
     runs-on: docker
@@ -24,7 +21,7 @@ jobs:
         run: git clone --depth=1 --branch ${{ github.ref_name }} ${{ github.server_url }}/${{ github.repository }} .
 
       - name: Login to Forgejo Container Registry
-        run: echo "${{ secrets.FORGEJO_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.repository_owner }} --password-stdin
+        run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.repository_owner }} --password-stdin
 
       - name: Build and push image
         run: >
