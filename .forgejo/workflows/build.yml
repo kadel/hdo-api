@@ -27,6 +27,8 @@ jobs:
       - name: Build and push image
         run: >
           docker buildx build --push
+          --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          --label org.opencontainers.image.revision=${{ github.sha }}
           -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
           -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
           .
