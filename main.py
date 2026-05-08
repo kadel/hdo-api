@@ -97,6 +97,17 @@ def parse_time_windows(s: str) -> list[tuple[int, int, int, int]]:
     return windows
 
 
+def merge_windows(windows: list[tuple[int, int, int, int]]) -> list[tuple[int, int, int, int]]:
+    intervals = sorted((sh * 60 + sm, eh * 60 + em) for sh, sm, eh, em in windows)
+    merged: list[tuple[int, int]] = []
+    for s, e in intervals:
+        if merged and s <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+    return [(s // 60, s % 60, e // 60, e % 60) for s, e in merged]
+
+
 async def fetch_captcha(client: httpx.AsyncClient) -> bytes:
     ts = int(time_mod.time() * 1000)
     resp = await client.get(
@@ -186,7 +197,9 @@ async def refresh_ean(ean: str):
                 parts = datum.split(".")
                 if len(parts) == 3:
                     key = f"{parts[2]}-{parts[1]}-{parts[0]}"
-                    schedule[key] = parse_time_windows(casy)
+                    schedule.setdefault(key, []).extend(parse_time_windows(casy))
+        for key, windows in schedule.items():
+            schedule[key] = merge_windows(windows)
         ean_caches[ean] = {"schedule": schedule, "updated": datetime.now(TIMEZONE)}
         save_ean_cache(ean)
         logger.info("EAN %s refreshed: %s", ean, sorted(schedule.keys()))
