@@ -29,6 +29,8 @@ jobs:
           docker buildx build --push
           --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           --label org.opencontainers.image.revision=${{ github.sha }}
+          --annotation index,manifest:org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          --annotation index,manifest:org.opencontainers.image.revision=${{ github.sha }}
           -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
           -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
           .
