@@ -3,6 +3,7 @@ name: Build and Push Container
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 env:
   REGISTRY: forgejo.apps.home.tomaskral.eu
