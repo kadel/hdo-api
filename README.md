@@ -89,6 +89,19 @@ tariffs:
 
 Replace `localhost` with the container name (`evcc-tariff`) if running both services in Docker.
 
+## Data source
+
+The schedules come from CEZ Distribuce's anonymous "časy spínání" (switching times) endpoints — the same data shown on the public portal page.
+
+| Purpose | URL |
+|---|---|
+| Public portal page (browser) | `https://dip.cezdistribuce.cz/irj/portal/anonymous/casy-spinani` |
+| JSON schedule endpoint (POSTed by this service) | `https://dip.cezdistribuce.cz/irj/portal/anonymous/casy-spinani?path=switch-times/signals` |
+| CAPTCHA image (required by the JSON endpoint) | `https://dip.cezdistribuce.cz/irj/portal/anonymous/captcha` |
+| OCR for the CAPTCHA (third-party) | `https://api.ocr.space/parse/image` |
+
+The JSON endpoint expects a POST body of `{"ean": "<18 digits>", "captcha": "<4 letters>"}` and returns one record per `(signal, date)` pair. CEZ may return multiple signals per EAN (e.g. `…\|1`, `…\|2`, `…\|3`); this service unions all signal windows per date so any low-tariff slot from any relay counts as low.
+
 ## How it works
 
 1. On startup, loads all cached HDO schedules from disk
