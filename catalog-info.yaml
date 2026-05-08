@@ -96,3 +96,17 @@ spec:
           responses:
             "200":
               description: Cache state for debugging
+      /api/cache/{ean}:
+        delete:
+          summary: Invalidate cache for an EAN
+          parameters:
+            - name: ean
+              in: path
+              required: true
+              schema: { type: string }
+              description: 18-digit EAN number
+          responses:
+            "200":
+              description: Removal result (in-memory and on-disk flags)
+            "400":
+              description: EAN is not numeric

@@ -68,6 +68,14 @@ Returns the current price as plain text. Use with evcc's `price` source.
 
 Returns cache status per EAN for debugging.
 
+### `DELETE /api/cache/{ean}`
+
+Drops the cached schedule for the given EAN (in-memory and on-disk). The next request for that EAN will refetch from CEZ. Idempotent — returns `{"removed_memory": false, "removed_disk": false}` if no cache existed. Rejects non-numeric EANs with HTTP 400.
+
+```bash
+curl -X DELETE http://localhost:8080/api/cache/859182400000000000
+```
+
 ## evcc configuration
 
 ```yaml

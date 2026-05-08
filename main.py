@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, date
@@ -342,3 +342,17 @@ def status():
             "cache_updated": cache["updated"].isoformat() if cache["updated"] else None,
         }
     return result
+
+
+@app.delete("/api/cache/{ean}")
+def delete_cache(ean: str):
+    if not ean.isdigit():
+        raise HTTPException(status_code=400, detail="EAN must be numeric")
+    removed_memory = ean_caches.pop(ean, None) is not None
+    fetch_locks.pop(ean, None)
+    path = cache_path(ean)
+    removed_disk = path.exists()
+    if removed_disk:
+        path.unlink()
+    logger.info("[EAN %s] cache cleared (memory=%s, disk=%s)", ean, removed_memory, removed_disk)
+    return {"ean": ean, "removed_memory": removed_memory, "removed_disk": removed_disk}
