@@ -6,12 +6,14 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 import httpx
 import json
-import base64
 import re
 import time as time_mod
 import asyncio
 import os
 import logging
+
+from google import genai
+from google.genai import types
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("evcc-tariff")
@@ -20,10 +22,15 @@ TIMEZONE = ZoneInfo("Europe/Prague")
 
 CAPTCHA_URL = "https://dip.cezdistribuce.cz/irj/portal/anonymous/captcha"
 CEZ_API_URL = "https://dip.cezdistribuce.cz/irj/portal/anonymous/casy-spinani?path=switch-times/signals"
-OCR_URL = "https://api.ocr.space/parse/image"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+GEMINI_MODEL = "gemini-3.1-flash-lite"
+CAPTCHA_PROMPT = (
+    "This is a 4-letter CAPTCHA image. "
+    "Reply with only the 4 letters, uppercase, no spaces, no punctuation."
 )
 
 CACHE_DIR = Path(os.environ.get("CACHE_DIR", "/data"))
@@ -33,6 +40,26 @@ REFRESH_INTERVAL = timedelta(days=3)
 ean_caches: dict[str, dict] = {}
 fetch_locks: dict[str, asyncio.Lock] = {}
 fallback_windows: list[tuple[int, int, int, int]] | None = None
+_genai_client: genai.Client | None = None
+
+
+def get_genai_client() -> genai.Client:
+    global _genai_client
+    if _genai_client is None:
+        _genai_client = genai.Client()
+    return _genai_client
+
+
+def detect_image_mime(data: bytes) -> str:
+    if data.startswith(b"\x89PNG"):
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"GIF8"):
+        return "image/gif"
+    return "image/png"
 
 
 def cache_path(ean: str) -> Path:
@@ -118,40 +145,35 @@ async def fetch_captcha(client: httpx.AsyncClient) -> bytes:
     return resp.content
 
 
-async def solve_captcha(image: bytes, api_key: str) -> str:
-    b64 = base64.b64encode(image).decode()
-    async with httpx.AsyncClient(timeout=30) as c:
-        resp = await c.post(
-            OCR_URL,
-            data={
-                "base64Image": f"data:image/png;base64,{b64}",
-                "language": "eng",
-                "isOverlayRequired": "false",
-                "OCREngine": "3",
-                "scale": "true",
-                "isTable": "false",
-            },
-            headers={"apikey": api_key},
-        )
-    resp.raise_for_status()
-    result = resp.json()
-    if result.get("IsErroredOnProcessing"):
-        raise ValueError(f"OCR error: {result.get('ErrorMessage')}")
-    text = result.get("ParsedResults", [{}])[0].get("ParsedText", "")
+async def solve_captcha(image: bytes) -> str:
+    mime = detect_image_mime(image)
+    client = get_genai_client()
+    response = await client.aio.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=[
+            CAPTCHA_PROMPT,
+            types.Part.from_bytes(data=image, mime_type=mime),
+        ],
+        config=types.GenerateContentConfig(
+            max_output_tokens=16,
+            temperature=0.0,
+        ),
+    )
+    text = (response.text or "").strip()
     code = re.sub(r"[^A-Za-z]", "", text).upper()
     if len(code) != 4:
         raise ValueError(f"Invalid CAPTCHA result: {code!r} (raw: {text!r})")
     return code
 
 
-async def fetch_hdo(ean: str, ocr_key: str) -> list[dict]:
+async def fetch_hdo(ean: str) -> list[dict]:
     logger.info("[EAN %s] fetching HDO schedule from CEZ API", ean)
     for attempt in range(3):
         async with httpx.AsyncClient(timeout=30) as client:
             logger.debug("[EAN %s] fetching CAPTCHA image (attempt %d/3)", ean, attempt + 1)
             image = await fetch_captcha(client)
             try:
-                code = await solve_captcha(image, ocr_key)
+                code = await solve_captcha(image)
             except ValueError as e:
                 logger.warning("CAPTCHA OCR failed (attempt %d/3): %s", attempt + 1, e)
                 continue
@@ -186,9 +208,8 @@ async def fetch_hdo(ean: str, ocr_key: str) -> list[dict]:
 
 
 async def refresh_ean(ean: str):
-    ocr_key = os.environ.get("OCR_API_KEY", "helloworld")
     try:
-        signals = await fetch_hdo(ean, ocr_key)
+        signals = await fetch_hdo(ean)
         schedule: dict[str, list[tuple[int, int, int, int]]] = {}
         for sig in signals:
             datum = sig.get("datum", "")

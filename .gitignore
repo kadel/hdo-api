@@ -12,3 +12,8 @@ wheels/
 # HDO cache files
 hdo_cache.json
 [0-9]*.json
+
+# Local secrets / env files
+.env
+.env.*
+env.local

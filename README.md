@@ -2,7 +2,7 @@
 
 HTTP API serving CEZ HDO (hromadné dálkové ovládání) tariff schedules for [evcc](https://evcc.io).
 
-Fetches low/high tariff time windows from the CEZ distribuce API (with CAPTCHA solving via OCR.space), caches them locally, and serves evcc-compatible price forecasts. Supports multiple EAN numbers — each is cached independently.
+Fetches low/high tariff time windows from the CEZ distribuce API (with CAPTCHA solving via Gemini `gemini-3.1-flash-lite`), caches them locally, and serves evcc-compatible price forecasts. Supports multiple EAN numbers — each is cached independently.
 
 ## Prerequisites
 
@@ -40,7 +40,7 @@ docker compose up -d
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `OCR_API_KEY` | No | `helloworld` | OCR.space API key (free tier works) |
+| `GEMINI_API_KEY` | **Yes** | — | Google Gemini API key (used to solve the CEZ CAPTCHA via `gemini-3.1-flash-lite`) |
 | `CACHE_DIR` | No | `/data` | Directory for persistent cache files |
 | `LOW_TARIFF_WINDOWS` | No | — | Fallback schedule if CEZ API is unavailable, e.g. `00:00-05:00;06:00-08:30` |
 
@@ -98,7 +98,7 @@ The schedules come from CEZ Distribuce's anonymous "časy spínání" (switching
 | Public portal page (browser) | `https://dip.cezdistribuce.cz/irj/portal/anonymous/casy-spinani` |
 | JSON schedule endpoint (POSTed by this service) | `https://dip.cezdistribuce.cz/irj/portal/anonymous/casy-spinani?path=switch-times/signals` |
 | CAPTCHA image (required by the JSON endpoint) | `https://dip.cezdistribuce.cz/irj/portal/anonymous/captcha` |
-| OCR for the CAPTCHA (third-party) | `https://api.ocr.space/parse/image` |
+| OCR for the CAPTCHA (third-party) | `https://generativelanguage.googleapis.com` (Gemini `gemini-3.1-flash-lite`) |
 
 The JSON endpoint expects a POST body of `{"ean": "<18 digits>", "captcha": "<4 letters>"}` and returns one record per `(signal, date)` pair. CEZ may return multiple signals per EAN (e.g. `…\|1`, `…\|2`, `…\|3`); this service unions all signal windows per date so any low-tariff slot from any relay counts as low.
 
@@ -106,6 +106,6 @@ The JSON endpoint expects a POST body of `{"ean": "<18 digits>", "captcha": "<4 
 
 1. On startup, loads all cached HDO schedules from disk
 2. On request, if cache for the given EAN is missing or older than 3 days, fetches fresh data from CEZ distribuce API
-3. CAPTCHA on the CEZ API is solved using OCR.space free tier
+3. CAPTCHA on the CEZ API is solved by sending the image to Gemini `gemini-3.1-flash-lite` via the `google-genai` SDK (requires `GEMINI_API_KEY`)
 4. Each EAN's schedule is cached to its own file and refreshed every 3 days
 5. Each request maps the cached low-tariff windows to the `vt`/`nt` prices from the query parameters
