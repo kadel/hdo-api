@@ -332,15 +332,23 @@ async def rates(
     logger.info("[EAN %s] /api/rates request (vt=%.2f, nt=%.2f)", ean, vt, nt)
     await ensure_ean(ean)
     today = datetime.now(TIMEZONE).date()
-    tomorrow = today + timedelta(days=1)
+    cache = ean_caches.get(ean)
+    if cache and cache["schedule"]:
+        days = sorted(
+            date.fromisoformat(k)
+            for k in cache["schedule"].keys()
+            if date.fromisoformat(k) >= today
+        )
+    else:
+        days = [today, today + timedelta(days=1)]
     result = []
-    for day in (today, tomorrow):
+    for day in days:
         w = windows_for_date(ean, day)
         if w:
             result.extend(make_slots(day, vt, nt, w))
         else:
             logger.warning("[EAN %s] no schedule data for %s", ean, day)
-    logger.info("[EAN %s] /api/rates returning %d slots", ean, len(result))
+    logger.info("[EAN %s] /api/rates returning %d slots across %d day(s)", ean, len(result), len(days))
     return result
 
 
