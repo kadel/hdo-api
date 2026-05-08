@@ -302,15 +302,24 @@ def is_low(dt: datetime, windows: list[tuple[int, int, int, int]]) -> bool:
 
 
 def make_slots(day: date, vt: float, nt: float, windows: list[tuple[int, int, int, int]]) -> list[dict]:
-    slots = []
-    for hour in range(24):
-        start = datetime(day.year, day.month, day.day, hour, 0, 0, tzinfo=TIMEZONE)
-        end = start + timedelta(hours=1)
-        slots.append({
-            "start": start.isoformat(),
-            "end": end.isoformat(),
-            "value": nt if is_low(start, windows) else vt,
-        })
+    midnight = datetime(day.year, day.month, day.day, 0, 0, 0, tzinfo=TIMEZONE)
+
+    def at(minutes: int) -> str:
+        return (midnight + timedelta(minutes=minutes)).isoformat()
+
+    def append(slots: list[dict], s: int, e: int, value: float):
+        if e > s:
+            slots.append({"start": at(s), "end": at(e), "value": value})
+
+    slots: list[dict] = []
+    cursor = 0
+    for sh, sm, eh, em in sorted(windows):
+        s = sh * 60 + sm
+        e = eh * 60 + em
+        append(slots, cursor, s, vt)
+        append(slots, s, e, nt)
+        cursor = e
+    append(slots, cursor, 1440, vt)
     return slots
 
 

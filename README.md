@@ -50,13 +50,13 @@ All endpoints accept the EAN number as a query parameter. On first request for a
 
 ### `GET /api/rates?ean=859182400000000000&vt=6.20&nt=2.80`
 
-Returns a JSON array of hourly time slots for today and tomorrow. This is the endpoint to use with evcc's `forecast` source.
+Returns a JSON array of variable-length time slots for today and tomorrow, with boundaries aligned to the actual HDO switching transitions. evcc's `forecast` source accepts arbitrary slot durations.
 
 ```json
 [
-  {"start": "2026-05-07T00:00:00+02:00", "end": "2026-05-07T01:00:00+02:00", "value": 2.80},
-  {"start": "2026-05-07T01:00:00+02:00", "end": "2026-05-07T02:00:00+02:00", "value": 2.80},
-  {"start": "2026-05-07T05:00:00+02:00", "end": "2026-05-07T06:00:00+02:00", "value": 6.20}
+  {"start": "2026-05-07T00:00:00+02:00", "end": "2026-05-07T06:35:00+02:00", "value": 2.80},
+  {"start": "2026-05-07T06:35:00+02:00", "end": "2026-05-07T07:35:00+02:00", "value": 6.20},
+  {"start": "2026-05-07T07:35:00+02:00", "end": "2026-05-07T11:35:00+02:00", "value": 2.80}
 ]
 ```
 
